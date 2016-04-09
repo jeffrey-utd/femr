@@ -18,7 +18,8 @@
 */
 package femr.business.services.system;
 
-import com.avaje.ebean.*;
+import com.avaje.ebean.ExpressionList;
+import com.avaje.ebean.Query;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Joiner;
@@ -49,7 +50,6 @@ public class MedicationService implements IMedicationService {
     private final IRepository<IMedication> medicationRepository;
     private final IRepository<IMedicationActiveDrugName> medicationActiveDrugNameRepository;
     private final IRepository<IMedicationForm> medicationFormRepository;
-    private final IRepository<IMedicationInventory> medicationInventoryRepository;
     private final IRepository<IMedicationMeasurementUnit> medicationMeasurementUnitRepository;
     private final IRepository<IMedicationAdministration> medicationAdministrationRepository;
     private final IRepository<IPatientPrescription> patientPrescriptionRepository;
@@ -63,7 +63,6 @@ public class MedicationService implements IMedicationService {
                              IRepository<IMedicationActiveDrugName> medicationActiveDrugNameRepository,
                              IRepository<IMedicationAdministration> medicationAdministrationRepository,
                              IRepository<IMedicationForm> medicationFormRepository,
-                             IRepository<IMedicationInventory> medicationInventoryRepository,
                              IRepository<IMedicationMeasurementUnit> medicationMeasurementUnitRepository,
                              IRepository<IPatientPrescription> patientPrescriptionRepository,
                              IRepository<IPatientPrescriptionReplacement> patientPrescriptionReplacementRepository,
@@ -74,7 +73,6 @@ public class MedicationService implements IMedicationService {
         this.medicationRepository = medicationRepository;
         this.medicationActiveDrugNameRepository = medicationActiveDrugNameRepository;
         this.medicationFormRepository = medicationFormRepository;
-        this.medicationInventoryRepository = medicationInventoryRepository;
         this.medicationMeasurementUnitRepository = medicationMeasurementUnitRepository;
         this.medicationAdministrationRepository = medicationAdministrationRepository;
         this.patientPrescriptionRepository = patientPrescriptionRepository;
@@ -137,11 +135,10 @@ public class MedicationService implements IMedicationService {
                 medicationForm = dataModelMapper.createMedicationForm(form);
             }
 
-            // Based on fEMR-95.  Retrieve all medication with the same name AND not an old medication from previous trips
-            // that did not require a medication form.
+            // Retrieve all medication with the same name
             Query<Medication> query = QueryProvider.getMedicationQuery()
                     .where()
-                    .ne("medication_forms_id", null)
+                    .eq("name", name)
                     .orderBy("isDeleted asc");
 
             IMedication matchingMedication = null;
@@ -213,13 +210,12 @@ public class MedicationService implements IMedicationService {
         List<PrescriptionItem> prescriptionItems = new ArrayList<>();
         List<IPatientPrescriptionReplacement> patientPrescriptionReplacements = new ArrayList<>();
 
-        //get the reason for replacing
         ExpressionList<PatientPrescriptionReplacementReason> replacementReasonExpressionList = QueryProvider.getPatientPrescriptionReasonQuery()
                 .where()
                 .eq("name", "pharmacist replacement");
+
         IPatientPrescriptionReplacementReason patientPrescriptionReplacementReason = patientPrescriptionReplacementReasonRepository.findOne(replacementReasonExpressionList);
 
-        //iterate over each prescription and its replacement
         prescriptionPairs.forEach((newId, oldId) -> {
 
             ExpressionList<PatientPrescription> newPrescriptionExpressionList = QueryProvider.getPatientPrescriptionQuery()
@@ -263,18 +259,14 @@ public class MedicationService implements IMedicationService {
             List<? extends IPatientPrescriptionReplacement> replacements = patientPrescriptionReplacementRepository.createAll(patientPrescriptionReplacements);
             for (IPatientPrescriptionReplacement prescriptionReplacement : replacements) {
 
-                prescriptionItems.add(itemModelMapper.createPrescriptionItem(
-                        prescriptionReplacement.getReplacementPrescription().getId(),
+                prescriptionItems.add(itemModelMapper.createPrescriptionItem(prescriptionReplacement.getId(),
                         prescriptionReplacement.getReplacementPrescription().getMedication().getName(),
                         null,
                         prescriptionReplacement.getReplacementPrescription().getPhysician().getFirstName(),
                         prescriptionReplacement.getReplacementPrescription().getPhysician().getLastName(),
                         prescriptionReplacement.getReplacementPrescription().getMedicationAdministration(),
                         prescriptionReplacement.getReplacementPrescription().getAmount(),
-                        prescriptionReplacement.getReplacementPrescription().getMedication(),
-                        null,
-                        prescriptionReplacement.getReplacementPrescription().isCounseled())
-                );
+                        prescriptionReplacement.getReplacementPrescription().getMedication(),null,null));
             }
         } catch (Exception ex) {
 
@@ -312,9 +304,6 @@ public class MedicationService implements IMedicationService {
                 prescription.setCounseled(isCounseled);
                 prescription = patientPrescriptionRepository.update(prescription);
 
-
-
-
                 prescriptionItems.add(itemModelMapper.createPrescriptionItem(prescription.getId(),
                         prescription.getMedication().getName(),
                         null,
@@ -322,10 +311,7 @@ public class MedicationService implements IMedicationService {
                         prescription.getPhysician().getLastName(),
                         prescription.getMedicationAdministration(),
                         prescription.getAmount(),
-                        prescription.getMedication(),
-                        null,
-                        prescription.isCounseled())
-                );
+                        prescription.getMedication(),null,null));
 
             } catch (Exception ex) {
 
@@ -333,7 +319,7 @@ public class MedicationService implements IMedicationService {
             }
         });
 
-        response.setResponseObject(prescriptionItems);
+
         return response;
     }
 
@@ -366,9 +352,7 @@ public class MedicationService implements IMedicationService {
                     patientPrescription.getPhysician().getLastName(),
                     patientPrescription.getMedicationAdministration(),
                     patientPrescription.getAmount(),
-                    patientPrescription.getMedication(),
-                    null,
-                    patientPrescription.isCounseled());
+                    patientPrescription.getMedication(),null,null);
             response.setResponseObject(prescriptionItem);
         } catch (Exception ex) {
 
@@ -417,9 +401,7 @@ public class MedicationService implements IMedicationService {
                     patientPrescription.getPhysician().getLastName(),
                     patientPrescription.getMedicationAdministration(),
                     patientPrescription.getAmount(),
-                    patientPrescription.getMedication(),
-                    null,
-                    patientPrescription.isCounseled());
+                    patientPrescription.getMedication(),null,null);
             response.setResponseObject(prescriptionItem);
 
         } catch (Exception ex) {
@@ -549,26 +531,26 @@ public class MedicationService implements IMedicationService {
      * {@inheritDoc}
      */
     @Override
-    public ServiceResponse<List<MedicationItem>> retrieveMedicationInventory(int tripId) {
+    public ServiceResponse<List<MedicationItem>> retrieveMedicationInventory() {
         ServiceResponse<List<MedicationItem>> response = new ServiceResponse<>();
 
-        //Querying based on the trip id.  Each trip will have its own inventory.
-        ExpressionList<MedicationInventory> medicationInventoryExpressionList = QueryProvider.getMedicationInventoryQuery()
-                .where()
-                .eq("missionTrip.id", tripId);
+        // only show medications with an inventory entry
 
-        List<? extends IMedicationInventory> medicationsInventory;
+        ExpressionList<Medication> query = QueryProvider.getMedicationQuery()
+                .where()
+                .eq("isDeleted", false);
+
+        List<? extends IMedication> medications;
         try {
-            medicationsInventory = medicationInventoryRepository.find(medicationInventoryExpressionList);
+            medications = medicationRepository.find(query);
         } catch (Exception ex) {
             response.addError("exception", ex.getMessage());
             return response;
         }
 
         List<MedicationItem> medicationItems = new ArrayList<>();
-
-        for (IMedicationInventory m : medicationsInventory) {
-            medicationItems.add(itemModelMapper.createMedicationItem(m.getMedication(), m.getQuantity_current(), m.getQuantity_total(), m.getIsDeleted()));
+        for (IMedication m : medications) {
+            medicationItems.add(itemModelMapper.createMedicationItem(m, null, null,null));
         }
         response.setResponseObject(medicationItems);
 
@@ -641,5 +623,50 @@ public class MedicationService implements IMedicationService {
         }
 
         return response;
+    }
+
+    @Override
+    public ServiceResponse<MedicationItem> removeMedication(int medicationID) {
+        ServiceResponse<MedicationItem> response = new ServiceResponse<>();
+        try{
+
+            // Get the medication Item by it's ID
+            IMedication medication;
+            ExpressionList<Medication> medicationQuery = QueryProvider.getMedicationQuery()
+                    .where()
+                    .eq("id", medicationID);
+
+            // Find one medication (should only be 1 with the ID) from the database
+            medication = medicationRepository.findOne(medicationQuery);
+
+            medicationRepository.delete(medication);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            response.addError("exception", ex.getMessage());
+        }
+
+        return response;
+    }
+
+    public ServiceResponse<IMedication> retrieveByID (Integer id) {
+        ServiceResponse<IMedication> response = new ServiceResponse<>();
+        try {
+            IMedication medication;
+            ExpressionList<Medication> medicationQuery = QueryProvider.getMedicationQuery()
+                    .where()
+                    .eq("id", id);
+
+            medication = medicationRepository.findOne(medicationQuery);
+
+            response.setResponseObject(medication);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            response.addError("exception", ex.getMessage());
+        }
+
+        return response;
+
     }
 }

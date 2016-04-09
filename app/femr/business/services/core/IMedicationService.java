@@ -23,6 +23,7 @@ import femr.common.dtos.ServiceResponse;
 import femr.common.models.MedicationAdministrationItem;
 import femr.common.models.MedicationItem;
 import femr.common.models.PrescriptionItem;
+import femr.data.models.core.IMedication;
 
 import java.util.List;
 import java.util.Map;
@@ -61,33 +62,34 @@ public interface IMedicationService {
     ServiceResponse<PrescriptionItem> createPrescriptionWithNewMedication(String medicationName, Integer administrationId, int encounterId, int userId, int amount, String specialInstructions);
 
     /**
-     * Replace an existing prescription with an existing prescription. This will not update the inventory. This will not dispense the prescription.
-     * This method does update the patient_prescription_replacements table (which infers the prescription has been replaced).
+     * Replace an existing prescription with an existing prescription.
      *
      * @param prescriptionPairs A mapping of prescriptions to replace in the form <newPrescription, oldPrescription> neither of which are null.
-     * @return a PrescriptionItem representing the prescriptions that replaced the old prescriptions and/or errors if they exist.
+     * @return a PrescriptionItem representing the new prescription and/or errors if they exist.
      */
     ServiceResponse<List<PrescriptionItem>> replacePrescriptions(Map<Integer, Integer> prescriptionPairs);
 
     /**
-     * Dispense an existing prescription. This will not update the inventory. It does update the date dispensed and whether or not the patient
-     * was counseled in the patient_prescriptions table.
+     * Dispense an existing prescription. This will not update the inventory.
      *
      * @param prescriptionsToDispense A mapping of prescriptions to dispense in the form <prescriptionId, isCounseled> neither of which are null.
      * @return a PrescriptionItem representing the dispensed prescription and/or errors if they exist.
      */
     ServiceResponse<List<PrescriptionItem>> dispensePrescriptions(Map<Integer, Boolean> prescriptionsToDispense);
 
+
     /**
      * Adds a new medication to the system. Does NOT update inventory quantities.
      *
-     * @param name name of the medication, not null
-     * @param form form of the medication (e.g. caps/capsules), may be null
+     * @param name              name of the medication, not null
+     * @param form              form of the medication (e.g. caps/capsules), may be null
      * @param activeIngredients active ingredients in the medication, may be null
      * @return a service response that contains a MedicationItem representing the medication that was just created
      * and/or errors if they exist.
      */
-    ServiceResponse<MedicationItem> createMedication(String name, String form, List<MedicationItem.ActiveIngredient> activeIngredients);
+    default ServiceResponse<MedicationItem> createMedication(String name, String form, List<MedicationItem.ActiveIngredient> activeIngredients) {
+        return null;
+    }
 
     /**
      * Deletes/marks deleted a medication by it's ID
@@ -135,7 +137,7 @@ public interface IMedicationService {
      * @return a service response that contains a list of MedicationItems
      * and/or errors if they exist.
      */
-    ServiceResponse<List<MedicationItem>> retrieveMedicationInventory(int tripId);
+    ServiceResponse<List<MedicationItem>> retrieveMedicationInventory();
 
     /**
      * Retrieves a ObjectNode of all medications in the system
@@ -144,4 +146,8 @@ public interface IMedicationService {
      * and/or errors if they exist
      */
     ServiceResponse<ObjectNode> retrieveAllMedicationsWithID();
+
+    ServiceResponse<MedicationItem> removeMedication(int id);
+
+    ServiceResponse<IMedication> retrieveByID (Integer id);
 }
