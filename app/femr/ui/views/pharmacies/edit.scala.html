@@ -1,6 +1,7 @@
 @(currentUser: femr.common.dtos.CurrentUser, viewModel: femr.ui.models.pharmacy.EditViewModelGet, searchError: java.lang.Boolean )
 
 @import femr.ui.controllers.routes.PharmaciesController
+@import femr.ui.controllers.routes.MedicalController
 @import femr.ui.views.html.layouts.main
 @import femr.ui.views.html.partials.search
 @import femr.ui.views.html.partials.patientOverview
@@ -29,7 +30,6 @@
 
 
         <div id="mainWrap" class="backgroundForWrap">
-        @helper.form(action = PharmaciesController.editPost(viewModel.getPatient.getId)) {
 
 
             <div id="diagnosisWrap">
@@ -85,7 +85,6 @@
                         </li>
                     }
 
-                }
                 </ol>
 
             </div>
@@ -98,8 +97,13 @@
                 <input type="hidden" name="disclaimer" value="0" />
             </div>
             <div id="submitWrap">
-                <button type="submit" id="pharmacySubmitBtn" class="fButton fRedButton fSubmitButton pull-right">
-                    Submit</button>
+                @helper.form(action = PharmaciesController.editPost(viewModel.getPatient.getId)) {
+                    <button type="submit" id="pharmacySubmitBtn" class="fButton fRedButton fSubmitButton pull-right">
+                        Submit</button>
+                }
+                @helper.form(action = MedicalController.editGet(viewModel.getPatient.getId)) {
+                    <button type="submit" id="medicalButton" class="fButton fOtherButton pull-left">See This Patient In Medical</button>
+                }
             </div>
 
         </div>

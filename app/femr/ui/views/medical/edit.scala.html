@@ -4,6 +4,7 @@
 
 @import femr.ui.controllers.routes.MedicalController
 @import femr.ui.controllers.routes.SearchController
+@import femr.ui.controllers.routes.PharmaciesController
 @import femr.ui.views.html.layouts.main
 @import femr.ui.views.html.partials.search
 @import femr.ui.views.html.partials.medical.tabs._
@@ -107,6 +108,9 @@
                             @helper.form(action = SearchController.handleSearch("history")) {
                                 <input type="text" class="hidden" name="patientSearchQuery" value="@viewModel.getPatientItem.getId"/>
                                 <button type="submit" id="historyButton" class="fButton fOtherButton pull-left">Patient History</button>
+                            }
+                            @helper.form(action = PharmaciesController.editGet(viewModel.getPatientItem.getId)) {
+                                <button type="submit" id="pharmacyButton" class="fButton fOtherButton pull-left">See This Patient In Pharmacy</button>
                             }
                         </div>
 

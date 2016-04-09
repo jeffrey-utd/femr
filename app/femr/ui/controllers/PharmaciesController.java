@@ -253,7 +253,7 @@ public class PharmaciesController extends Controller {
             if (dispensePrescriptionsServiceResponse.hasErrors()) {
 
                 throw new RuntimeException();
-            } else {
+            } else if (dispensePrescriptionsServiceResponse.getResponseObject() != null) {
                 //inventory!
                 for (PrescriptionItem prescriptionItem : dispensePrescriptionsServiceResponse.getResponseObject()) {
 
