@@ -276,6 +276,15 @@ public class MedicalController extends Controller {
         PatientEncounterItem patientEncounterItem = patientEncounterServiceResponse.getResponseObject();
         patientEncounterItem = encounterService.checkPatientInToMedical(patientEncounterItem.getId(), currentUserSession.getId()).getResponseObject();
 
+        //get current prescriptions
+        ServiceResponse<List<PrescriptionItem>> prescriptionItemServiceResponse = searchService.retrieveUnreplacedPrescriptionItems(patientEncounterItem.getId());
+        if (prescriptionItemServiceResponse.hasErrors()) {
+
+            throw new RuntimeException();
+        }
+        List<PrescriptionItem> oldPrescriptions = prescriptionItemServiceResponse.getResponseObject();
+
+
         //get and save problems
         List<String> problemList = new ArrayList<>();
         for (ProblemItem pi : viewModelPost.getProblems()) {
@@ -335,27 +344,67 @@ public class MedicalController extends Controller {
         //create patient encounter photos
         photoService.createEncounterPhotos(request().body().asMultipartFormData().getFiles(), patientEncounterItem, viewModelPost);
 
+
+        List<PrescriptionItem> addSet = viewModelPost.getPrescriptions();
+        List<PrescriptionItem> deleteSet = oldPrescriptions;
+
+        //Form the set of prescriptions to add
+        for (int p = 0; p < oldPrescriptions.size(); p++) {
+          for (int x = 0; x < addSet.size(); x++) {
+            if (addSet.get(x).getMedicationID() == oldPrescriptions.get(p).getMedicationID()) {
+              addSet.remove(x);
+              p++;
+              x=0;
+            }
+          }
+        }
+
+        //Form the set of prescriptions to delete
+        List<PrescriptionItem> workingList = viewModelPost.getPrescriptions();
+        for (int p = 0; p < workingList.size(); p++) {
+          for (int x = 0; x < deleteSet.size(); x++) {
+            if (deleteSet.get(x).getMedicationID() == workingList.get(p).getMedicationID()) {
+              deleteSet.remove(x);
+              p++;
+              x=0;
+            }
+          }
+        }
+
+        for (PrescriptionItem p : addSet) {
+          System.out.println(p.getMedicationName());
+        }
+        for (PrescriptionItem p : deleteSet) {
+          System.out.println(p.getMedicationName());
+        }
+        for (PrescriptionItem p : oldPrescriptions) {
+          System.out.println("name: " + p.getMedicationName());
+          System.out.println("id: " + p.getMedicationID());
+        }
+
         //get the prescriptions that have an ID (e.g. prescriptions that exist in the dictionary).
         List<PrescriptionItem> prescriptionItemsWithID = viewModelPost.getPrescriptions()
                 .stream()
                 .filter(prescription -> prescription.getMedicationID() != null)
                 .collect(Collectors.toList());
 
-        //create the prescriptions that already have an ID
+        //create or *delete* the prescriptions that already have an ID
         ServiceResponse<PrescriptionItem> createPrescriptionServiceResponse;
         for (PrescriptionItem prescriptionItem : prescriptionItemsWithID){
 
-            createPrescriptionServiceResponse = medicationService.createPrescription(
-                    prescriptionItem.getMedicationID(),
-                    prescriptionItem.getAdministrationID(),
-                    patientEncounterItem.getId(),
-                    currentUserSession.getId(),
-                    prescriptionItem.getAmount(),
-                    null);
+            if (addSet.remove(prescriptionItem)) {
+                createPrescriptionServiceResponse = medicationService.createPrescription(
+                      prescriptionItem.getMedicationID(),
+                      prescriptionItem.getAdministrationID(),
+                      patientEncounterItem.getId(),
+                      currentUserSession.getId(),
+                      prescriptionItem.getAmount(),
+                      null);
 
-            if (createPrescriptionServiceResponse.hasErrors()){
+                if (createPrescriptionServiceResponse.hasErrors()){
 
-                throw new RuntimeException();
+                    throw new RuntimeException();
+                }
             }
         }
 
@@ -369,18 +418,21 @@ public class MedicalController extends Controller {
 
         for (PrescriptionItem prescriptionItem : prescriptionItemsWithoutID){
 
-            createPrescriptionServiceResponse = medicationService.createPrescriptionWithNewMedication(
-                    prescriptionItem.getMedicationName(),
-                    prescriptionItem.getAdministrationID(),
-                    patientEncounterItem.getId(),
-                    currentUserSession.getId(),
-                    prescriptionItem.getAmount(),
-                    null);
+            
+          if (addSet.remove(prescriptionItem)) {
+              createPrescriptionServiceResponse = medicationService.createPrescriptionWithNewMedication(
+                      prescriptionItem.getMedicationName(),
+                      prescriptionItem.getAdministrationID(),
+                      patientEncounterItem.getId(),
+                      currentUserSession.getId(),
+                      prescriptionItem.getAmount(),
+                      null);
 
-            if (createPrescriptionServiceResponse.hasErrors()){
+                if (createPrescriptionServiceResponse.hasErrors()){
 
-                throw new RuntimeException();
-            }
+                    throw new RuntimeException();
+                }
+          }
         }
 
 
